@@ -1,13 +1,15 @@
-using UnityEngine;
 using System.Collections;
-using UnityEngine.UI; // Добавляем для работы с UI элементами
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 public class Flashlight : MonoBehaviour
 {
     [Header("Основные настройки")]
     [SerializeField] private Light flashlightLight;
     [SerializeField] private KeyCode toggleKey = KeyCode.F;
-    [SerializeField] private AudioClip toggleSound;
+    [SerializeField] private AudioClip flashOnSound;  // Звук включения
+    [SerializeField] private AudioClip flashOffSound; // Звук выключения
     [SerializeField] private float maxIntensity = 2f;
     [SerializeField] private float lightChangeSpeed = 5f;
     [SerializeField] private Vector3 positionOffset = new Vector3(0.2f, -0.1f, 0.1f);
@@ -17,19 +19,21 @@ public class Flashlight : MonoBehaviour
     [SerializeField] private bool enableShake = true;
     [SerializeField] private float shakeIntensity = 0.01f;
     [SerializeField] private float shakeSpeed = 3f;
-    [SerializeField] private ParticleSystem flashlightParticles;
 
     [Header("Батарея")]
     [SerializeField] private bool useBattery = true;
     [SerializeField] private float maxBattery = 100f;
-    [SerializeField] private float batteryDrainRate = 5f; // % в секунду
-    [SerializeField] private float batteryRegenRate = 2f; // % в секунду
+    [SerializeField] private float batteryDrainRate = 5f;
+    [SerializeField] private float batteryRegenRate = 2f;
     [SerializeField] private float batteryRegenDelay = 3f;
 
     [Header("UI")]
-    [SerializeField] private Image batteryBar; // Требует UnityEngine.UI
+    [SerializeField] private Image batteryBar;
     [SerializeField] private Color fullBatteryColor = Color.green;
     [SerializeField] private Color lowBatteryColor = Color.red;
+    
+    [Header("UI Text")]
+    [SerializeField] private TextMeshProUGUI batteryText; // Для TextMeshPro
 
     private AudioSource audioSource;
     private bool isOn;
@@ -88,17 +92,14 @@ public class Flashlight : MonoBehaviour
         isOn = !isOn;
         targetIntensity = isOn ? maxIntensity : 0f;
 
-        // Звук
-        if (toggleSound != null)
+        // Воспроизведение соответствующего звука
+        if (isOn && flashOnSound != null)
         {
-            audioSource.PlayOneShot(toggleSound);
+            audioSource.PlayOneShot(flashOnSound);
         }
-
-        // Частицы
-        if (flashlightParticles != null)
+        else if (!isOn && flashOffSound != null)
         {
-            if (isOn) flashlightParticles.Play();
-            else flashlightParticles.Stop();
+            audioSource.PlayOneShot(flashOffSound);
         }
     }
 
@@ -140,8 +141,14 @@ public class Flashlight : MonoBehaviour
             {
                 isOn = false;
                 targetIntensity = 0f;
-                if (flashlightParticles != null) flashlightParticles.Stop();
+
+                // Воспроизведение звука выключения при разряде
+                if (flashOffSound != null)
+                {
+                    audioSource.PlayOneShot(flashOffSound);
+                }
             }
+            
         }
         else if (batteryTimer <= 0)
         {
@@ -187,6 +194,21 @@ public class Flashlight : MonoBehaviour
             fullBatteryColor,
             batteryPercent
         );
+        if (batteryText != null)
+        {
+            batteryText.text = $"{Mathf.RoundToInt(batteryPercent * 100)}%";
+        }
+        if (currentBattery < 20f)
+        {
+            float alpha = Mathf.PingPong(Time.time * 2f, 1f);
+            batteryBar.color = new Color(
+                batteryBar.color.r,
+                batteryBar.color.g,
+                batteryBar.color.b,
+                alpha
+            );
+        }
+
     }
 
     // Публичные методы для взаимодействия

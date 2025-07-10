@@ -1,32 +1,32 @@
 using UnityEngine;
-using UnityEngine.UI; // Добавлено для UI
-using TMPro; // Добавлено для TextMeshPro (опционально)
+using UnityEngine.UI;
+using TMPro;
 
 [RequireComponent(typeof(CharacterController), typeof(AudioSource))]
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
-    [SerializeField] private float walkSpeed = 12f;          // Скорость ходьбы
-    [SerializeField] private float runSpeed = 18f;           // Скорость бега
-    [SerializeField] private float crouchSpeed = 6f;         // Скорость приседания
-    [SerializeField] private float gravity = -9.81f;         // Сила гравитации
-    [SerializeField] private float jumpHeight = 3f;          // Высота прыжка
+    [SerializeField] private float walkSpeed = 12f;
+    [SerializeField] private float runSpeed = 18f;
+    [SerializeField] private float crouchSpeed = 6f;
+    [SerializeField] private float gravity = -9.81f;
+    [SerializeField] private float jumpHeight = 3f;
 
     [Header("Camera Settings")]
-    [SerializeField] private Camera playerCamera;            // Ссылка на камеру
-    [SerializeField] private Transform cameraTarget; // Добавляем эту строку
-    [SerializeField] private float normalFOV = 60f;          // Нормальное поле зрения
-    [SerializeField] private float runFOV = 70f;             // Поле зрения при беге
-    [SerializeField] private float fovChangeSpeed = 5f;      // Скорость изменения FOV
-    [SerializeField] private float normalHeight = 1.8f;      // Высота камеры стоя
-    [SerializeField] private float crouchHeight = 1f;        // Высота камеры при приседании
-    [SerializeField] private float heightChangeSpeed = 5f;   // Скорость изменения высоты
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private Transform cameraTarget;
+    [SerializeField] private float normalFOV = 60f;
+    [SerializeField] private float runFOV = 70f;
+    [SerializeField] private float fovChangeSpeed = 5f;
+    [SerializeField] private float normalHeight = 1.8f;
+    [SerializeField] private float crouchHeight = 1f;
+    [SerializeField] private float heightChangeSpeed = 5f;
 
     [Header("Stamina Settings")]
-    [SerializeField] private float maxStamina = 100f;        // Максимальная стамина
-    [SerializeField] private float staminaDrainRate = 20f;   // Скорость расхода стамины
-    [SerializeField] private float staminaRegenRate = 10f;   // Скорость восстановления стамины
-    [SerializeField] private float staminaRegenDelay = 2f;   // Задержка перед восстановлением
+    [SerializeField] private float maxStamina = 100f;
+    [SerializeField] private float staminaDrainRate = 20f;
+    [SerializeField] private float staminaRegenRate = 10f;
+    [SerializeField] private float staminaRegenDelay = 2f;
 
     [Header("Audio Settings")]
     [SerializeField] private AudioClip footstepSound;
@@ -35,36 +35,35 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float crouchStepInterval = 0.8f;
 
     [Header("Interaction Settings")]
-    [SerializeField] private float interactionRange = 2f;    // Дальность взаимодействия
-    [SerializeField] private LayerMask interactableLayer;    // Слой для интерактивных объектов
+    [SerializeField] private float interactionRange = 2f;
+    [SerializeField] private LayerMask interactableLayer;
 
-    [Header("UI Settings")]
+    [Header("Stamina UI Settings")]
     [SerializeField] private Image staminaBar;               // Полоса стамины
-    [SerializeField] private TextMeshProUGUI staminaText;    // Текст для процента стамины (опционально)
+    [SerializeField] private Image staminaBackground;        // Фон полосы стамины
+    [SerializeField] private TextMeshProUGUI staminaText;    // Текст стамины
+    [SerializeField] private Color fullStaminaColor = Color.green;
+    [SerializeField] private Color mediumStaminaColor = Color.yellow;
+    [SerializeField] private Color lowStaminaColor = Color.red;
+    [SerializeField] private Color textColor = Color.white;  // Цвет текста
 
-    [Header("Фонарик")]
-    [SerializeField] private Flashlight flashlight;
-
-    private CharacterController controller;                  // Ссылка на CharacterController
-    [SerializeField] private AudioSource audioSource;       // Компонент для проигрывания звуков
-    private Vector3 velocity;                               // Вектор скорости для гравитации
-    private bool isGrounded;                                // Находится ли персонаж на земле
-    private bool isCrouching;                               // Приседает ли персонаж
-    private float currentStamina;                           // Текущая стамина
-    private float staminaTimer;                             // Таймер для восстановления стамины
-    private float stepTimer;                                // Таймер для шагов
-    private InventorySystem inventory;                      // Ссылка на систему инвентаря
+    private CharacterController controller;
+    [SerializeField] private AudioSource audioSource;
+    private Vector3 velocity;
+    private bool isGrounded;
+    private bool isCrouching;
+    private float currentStamina;
+    private float staminaTimer;
+    private float stepTimer;
+    private InventorySystem inventory;
     private float currentHeight;
     private Vector3 lastPosition;
-    private float bobTimer;                                 // Таймер для покачивания
-    private Vector3 baseCameraPosition;                     // Базовая позиция камеры
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
         controller.enabled = false;
 
-        // Создаем цель для камеры если не задана
         if (cameraTarget == null)
         {
             GameObject targetObj = new GameObject("CameraTarget");
@@ -74,7 +73,6 @@ public class PlayerMovement : MonoBehaviour
             cameraTarget.localRotation = Quaternion.identity;
         }
 
-        // Привязываем камеру к цели
         if (playerCamera != null)
         {
             playerCamera.transform.SetParent(cameraTarget);
@@ -87,6 +85,7 @@ public class PlayerMovement : MonoBehaviour
         controller.center = new Vector3(0, currentHeight / 2f, 0);
         controller.enabled = true;
     }
+
     void Start()
     {
         audioSource = GetComponent<AudioSource>();
@@ -94,7 +93,7 @@ public class PlayerMovement : MonoBehaviour
         inventory = GetComponent<InventorySystem>();
         stepTimer = walkStepInterval;
         lastPosition = transform.position;
-        UpdateStaminaUI(); // Инициализация UI
+        UpdateStaminaUI();
     }
 
     void Update()
@@ -106,21 +105,6 @@ public class PlayerMovement : MonoBehaviour
         HandleStamina();
         HandleInteraction();
         HandleFootsteps();
-        if (Input.GetKeyDown(KeyCode.E))
-    {
-            RaycastHit hit;
-            if (Physics.Raycast(playerCamera.transform.position,
-                               playerCamera.transform.forward,
-                               out hit,
-                               interactionRange))
-            {
-                if (hit.collider.CompareTag("Battery"))
-                {
-                    flashlight.RechargeBattery(30f);
-                    Destroy(hit.collider.gameObject);
-                }
-            }
-        }
     }
 
     public bool IsCrouching()
@@ -161,7 +145,6 @@ public class PlayerMovement : MonoBehaviour
             isCrouching = !isCrouching;
         }
 
-        // Автоматический выход из приседа при прыжке
         if (isCrouching && Input.GetButtonDown("Jump"))
         {
             isCrouching = false;
@@ -172,8 +155,6 @@ public class PlayerMovement : MonoBehaviour
 
         controller.height = currentHeight;
         controller.center = new Vector3(0, currentHeight / 2f, 0);
-
-        // Обновляем позицию цели камеры
         cameraTarget.localPosition = new Vector3(0, currentHeight, 0);
     }
 
@@ -207,7 +188,7 @@ public class PlayerMovement : MonoBehaviour
             staminaTimer -= Time.deltaTime;
         }
 
-        UpdateStaminaUI(); // Обновляем UI
+        UpdateStaminaUI();
     }
 
     private void HandleInteraction()
@@ -215,7 +196,11 @@ public class PlayerMovement : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E) && inventory != null)
         {
             RaycastHit hit;
-            if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, interactionRange, interactableLayer))
+            if (Physics.Raycast(playerCamera.transform.position,
+                               playerCamera.transform.forward,
+                               out hit,
+                               interactionRange,
+                               interactableLayer))
             {
                 if (hit.collider.CompareTag("Pickup"))
                 {
@@ -258,19 +243,39 @@ public class PlayerMovement : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    
-
     private void UpdateStaminaUI()
     {
+        float staminaPercent = GetStaminaPercentage();
+
+        // Обновление полосы стамины
         if (staminaBar != null)
         {
-            staminaBar.fillAmount = GetStaminaPercentage();
-            // Изменение цвета полосы в зависимости от уровня стамины
-            staminaBar.color = currentStamina < 20f ? Color.red : Color.green;
+            staminaBar.fillAmount = staminaPercent;
+
+            // Изменение цвета в зависимости от уровня стамины
+            if (staminaPercent < 0.3f)
+                staminaBar.color = lowStaminaColor;
+            else if (staminaPercent < 0.6f)
+                staminaBar.color = mediumStaminaColor;
+            else
+                staminaBar.color = fullStaminaColor;
         }
+
+        // Обновление фона
+        if (staminaBackground != null)
+        {
+            staminaBackground.color = new Color(0.2f, 0.2f, 0.2f, 0.7f);
+        }
+
+        // Обновление текста - всегда одного цвета для контраста
         if (staminaText != null)
         {
-            staminaText.text = $"Stamina: {(GetStaminaPercentage() * 100f):F0}%";
+            staminaText.text = $"{(staminaPercent * 100f):F0}%";
+            staminaText.color = textColor; // Фиксированный цвет для контраста
+
+            // Добавляем контур для лучшей читаемости
+            staminaText.outlineWidth = 0.15f;
+            staminaText.outlineColor = Color.black;
         }
     }
 
